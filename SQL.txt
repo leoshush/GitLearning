@@ -147,3 +147,190 @@ select a.cityname , Count(b.sroll) from student b inner join connectable d on (b
 
 select * from subjectable;
 select * from markstable;
+
+-- Inner join --
+
+select a.stateid,a.statename,b.cityid,b.cityname
+from statetable a inner join citytable b
+on (a.stateid = b.stateid);
+
+-- left outer join-- 
+
+select a.stateid,a.statename,b.cityid,b.cityname
+from statetable a inner join citytable b
+on (a.stateid = b.stateid) where a.stateid is null;
+
+-- Equi Join --
+
+select a.stateid,a.statename,b.cityid,b.cityname
+from statetable a inner join citytable b
+on (a.stateid = b.stateid and a.stateid = 'S02');
+
+select a.stateid,a.statename,b.cityid,b.cityname
+from statetable a inner join citytable b
+on (a.stateid = b.stateid and a.stateid <> 'S02'); 
+
+-- Inbuilt Function --
+-- Two types of inbuilt function  1) Mutli Row - sum , count ,max , min ,avg ,etc .     2) Single row function  -- text , numeric , date . --
+
+select upper(firstname) as fname from student; 
+select round(102.565,2) ;
+select round(102.565,-2) ;
+
+select count(cityid), stateid from citytable ;
+-- city which have no students -- 
+
+ -- state with no city allocated 
+select a.stateid,a.statename , ifnull(b.ncity,'No city allocated') numberofcity from statetable a left outer join (select count(cityid) ncity,stateid from citytable group by stateid) b on (a.stateid=b.stateid);
+
+select count(sroll) as nstudent, cityid from connectable group by cityid;
+
+-- list of city which have no students -- 
+
+select a.cityid, a.cityname , IFNULL(b.nstudent,'not allocated') from citytable a 
+left outer join( select count(sroll) as nstudent, cityid from connectable group by cityid
+) b on (a.cityid = b.cityid);
+
+-- students who have not been allocated city --
+describe student;
+select a.sroll, a.firstname , b.cityid from student a left outer join connectable b on (a.sroll = b.sroll) where b.cityid is null;
+
+-- students who have taken different subjects --
+
+select a.sroll , a.firstname , b.subjectid , c.subject from student a 
+inner join markstable b on (a.sroll = b.sroll)
+inner join subjectable c on (b.subjectid = c.subid);
+
+-- create table employee  --
+
+create table employee (
+empid int primary key ,
+empname varchar(30) not null,
+mid int references employee(empid)
+);
+
+describe employee;
+
+insert into employee values (101,'Ram',101),(102,'Bharat',101),(103,'shyam',101),(104,'Laxman',102);
+
+select * from employee;
+
+select b.empid,b.empname,a.empname manager from employee a inner join employee b on (a.empid = b.mid);
+
+-- no. of employee for manager --
+select mid,count(mid) nemp from employee group by mid;
+
+select a.empid,a.empname , b.nemp from employee a 
+inner join (select mid,count(mid) nemp from employee group by mid) b
+on (a.empid = b.mid);
+
+select * from citytable where cityname = 'Bengaluru';
+
+select sroll , firstname, dob from  student 
+where sroll in (select sroll from connectable where cityid in (select cityid from citytable where cityname = 'Jammu'));
+
+
+-- List the students whose test performance is greater than 50 % in the first test --
+
+select sroll , firstname from student 
+where sroll in 
+(select sroll from markstable where testnum = 1 and marks > 50); 
+
+-- average performance should be greater than 50 --
+
+select sroll , firstname from student where sroll in (select sroll from markstable where marks > 70  in  (select avg(marks) from markstable group by sroll));
+
+select sroll , firstname from student where sroll in (select sroll from markstable group by sroll having avg(marks)>70);
+
+-- list student id ,student name ,test num and average performance testwise --
+
+select a.sroll , a.firstname , b.testnum , b.ay from student a inner join (select sroll , avg(marks) as ay ,testnum from markstable group by sroll , testnum) b on (a.sroll = b.sroll) ; 
+
+-- list the student with the marks with average performance for first test with the result fail pass , first class distinction --
+ -- inline view--
+	(select sroll , avg(marks) av ,testnum from markstable group by sroll ,testnum )  ;
+    
+select a.sroll , a.firstname , b.av ,
+case 
+     when b.av<35 then 'Fail'
+	 when b.av>35 then 'Pass'
+     when b.av>50 then 'First Class'
+     when b.av>85 then 'Distinction'
+end as result     
+from student a
+inner join (select sroll , avg(marks) av from markstable where testnum = 1 group by sroll) b on (a.sroll = b.sroll);
+
+ -- Write a query to display the students whose birthday is in december -- .
+ 
+ select sroll , firstname from student where (select extract(MONTH FROM dob) = '12');
+ 
+ select *,timestampdiff(MONTH,dob,curdate()) months from student;
+ 
+ -- view --
+ 
+ create view stable as select * from student;
+ select * from stable ;
+ 
+ create view sectable as select sroll , firstname , dob ,gender from student where  sroll > 1005;
+ -- to prevent data modification in main table we use with check option -- 
+  create view setable as select sroll , firstname , dob ,gender from student where  sroll > 1005 with check option;
+
+  insert into stable values (1013,'Jack','Sparrow','2010-09-21',default);
+
+
+create index fname on student(firstname);
+select * from student where firstname = 'Lionel';
+
+delimiter //
+CREATE PROCEDURE ADDNUMBER(in a int ,in b int,out c int)
+begin
+   set c= a + b; 
+end
+//   
+call ADDNUMBER(100,200,@X);
+select @x;
+//
+
+ 
+-- create function result1( a int ) return varchar(30) deterministic 
+-- begin 
+--       declare 
+--       output varchar(30);
+--       case 
+--            when a>90 then set output = 'Distinction'
+-- 	       when a>80 then set output ='1st class'
+--            when a>70 then set output ='Pass'
+--            else set output = 'Fail'
+-- end ; 
+--           return output 
+-- end //
+-- delimiter ;
+
+-- create a trigger --
+create table sbackup as select * from student where sroll is NULL;
+SHOW TABLES;
+
+ALTER TABLE sbackup
+ADD COLUMN usrname varchar(30) ;
+
+ALTER TABLE sbackup
+ADD COLUMN dt date ;
+describe sbackup;
+
+drop table sbackup;
+
+set autocommit = 0;
+commit ;
+select * from student;
+delimiter //
+
+create trigger yestrigger after delete on student 
+for each row
+begin 
+  insert into sbackup values (OLD.sroll,OLD.firstname,OLD.lname,OLD.dob,OLD.gender,user(),curdate());
+end //
+delimiter ;
+drop trigger yestrigger;
+select * from sbackup;
+select user();
+delete from student where sroll = 1006;
